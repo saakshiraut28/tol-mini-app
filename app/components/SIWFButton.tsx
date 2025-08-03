@@ -3,6 +3,7 @@
 import React from "react";
 import { useSIWF } from "../hooks/useSIWF";
 import { ArrowRight } from "lucide-react";
+import Image from "next/image";
 
 interface SIWFButtonProps {
   onSuccess?: (user: any) => void;
@@ -54,9 +55,9 @@ export default function SIWFButton({
       <div
         className={`flex items-center gap-3 p-3 bg-gray-50 rounded-lg ${className}`}
       >
-        {user.pfp && (
-          <img
-            src={user.pfp}
+        {user.pfpUrl && (
+          <Image
+            src={user.pfpUrl}
             alt={`${user.displayName} avatar`}
             className="w-8 h-8 rounded-full object-cover"
           />

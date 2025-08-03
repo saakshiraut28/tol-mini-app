@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase-client";
 
 export default function Sent({ fid }: { fid: number }) {
+  // ts-ignore
   const [sent, setSent] = useState<any[]>([]);
 
   useEffect(() => {

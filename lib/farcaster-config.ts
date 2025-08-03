@@ -1,5 +1,3 @@
-import { AuthKitProvider } from "@farcaster/auth-kit";
-
 export const farcasterConfig = {
   rpcUrl: "https://mainnet.optimism.io",
   domain:

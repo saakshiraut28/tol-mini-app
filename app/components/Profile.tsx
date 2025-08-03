@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Sent from "./Sent";
 import Receive from "./Receive";
+import Image from "next/image";
 
 type ProfileProps = {
   setActiveTab: (tab: string) => void;
@@ -19,6 +20,7 @@ type User = {
   solAddress?: string;
 };
 
+//ts-ignore
 export default function Profile({
   setActiveTab,
   user,
@@ -51,7 +53,7 @@ export default function Profile({
           <>
             <div className="relative flex items-start justify-between gap-4 rounded-xl bg-white p-4 shadow-sm border border-gray-200">
               <div className="flex justify-center items-center gap-4 text-center">
-                <img
+                <Image
                   src={
                     user.pfpUrl ||
                     "https://api.dicebear.com/7.x/pixel-art/svg?seed=demo"

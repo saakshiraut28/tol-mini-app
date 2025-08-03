@@ -1,29 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import UserSearch from "./UserSearch";
 import AmountInput from "./AmountInput";
 import UserPreview from "./UserPreview";
-import { useAccount } from "wagmi";
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther } from "viem";
-import {
-  Transaction,
-  TransactionButton,
-  TransactionToast,
-  TransactionToastAction,
-  TransactionToastIcon,
-  TransactionToastLabel,
-  TransactionError,
-  TransactionResponse,
-  TransactionStatusAction,
-  TransactionStatusLabel,
-  TransactionStatus,
-} from "@coinbase/onchainkit/transaction";
 import { supabase } from "@/lib/supabase-client";
 import { v4 as uuidv4 } from "uuid";
-
-type MainHeaderProps = {
-  setActiveTab: (tab: string) => void;
-  signOut: () => void;
-};
+import { SIWFUser } from "../hooks/useSIWF";
 
 type User = {
   fid: number;
@@ -36,93 +19,79 @@ type User = {
   };
 };
 
-interface FarcasterUser {
-  fid: number;
-  username?: string;
-  displayName?: string;
-  pfpUrl?: string;
-  bio?: string;
-  followerCount?: number;
-  followingCount?: number;
-  verified_addresses?: {
-    eth_addresses: string[];
-    sol_addresses: string[];
-  };
-}
-
-function MainHeader({
-  setActiveTab,
-  user,
-  signOut,
-}: MainHeaderProps & { user: FarcasterUser }) {
+function MainHeader({ user }: { user: SIWFUser }) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [message, setMessage] = useState("");
   const [amount, setAmount] = useState("");
+  const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
   const { address } = useAccount();
 
-  // Create the transaction calls
-  const createTransactionCalls = async () => {
-    if (!selectedUser?.verified_addresses?.eth_addresses?.[0] || !amount) {
-      throw new Error(
-        "They don't have a verified ETH address or amount is empty",
-      );
+  const {
+    data: sendResult,
+    sendTransactionAsync,
+    isPending,
+  } = useSendTransaction();
+
+  const { isSuccess } = useWaitForTransactionReceipt({
+    // ts-ignore-next-line
+    hash: sendResult,
+  });
+
+  const handleSend = async () => {
+    if (!selectedUser || !amount) return;
+
+    const toAddress = selectedUser.verified_addresses?.eth_addresses?.[0];
+    if (!toAddress) return;
+
+    try {
+      const tx = await sendTransactionAsync({
+        to: toAddress as `0x${string}`,
+        value: parseEther(amount),
+      });
+
+      setTxHash(tx);
+    } catch (err) {
+      console.error("Error sending ETH:", err);
     }
-
-    const recipientAddress = selectedUser.verified_addresses.eth_addresses[0];
-    const value = parseEther(amount);
-
-    return [
-      {
-        to: recipientAddress as `0x${string}`,
-        value: value,
-        data: "0x" as `0x${string}`, // Empty data for simple ETH transfer
-      },
-    ];
   };
 
-  const handleTransactionSuccess = async (response: TransactionResponse) => {
-    console.log("Transaction successful:", response);
-    const txHash = response.transactionReceipts[0]?.transactionHash;
+  useEffect(() => {
+    const saveToSupabase = async () => {
+      if (!txHash || !isSuccess || !selectedUser) return;
 
-    const { error } = await supabase.from("gift").insert([
-      {
-        id: uuidv4(),
-        sender_fid: user.fid,
-        recipient_fid: selectedUser?.fid,
-        recipient_address: selectedUser?.verified_addresses.eth_addresses[0],
-        tx_hash: txHash,
-        message: message,
-        amount: Number(amount) * 1e18,
-      },
-    ]);
+      const { error } = await supabase.from("gift").insert([
+        {
+          id: uuidv4(),
+          sender_fid: user.fid,
+          recipient_fid: selectedUser.fid,
+          recipient_address: selectedUser.verified_addresses.eth_addresses[0],
+          tx_hash: txHash,
+          message: message,
+          amount: Number(amount) * 1e18,
+        },
+      ]);
 
-    if (error) {
-      console.error("Error saving to Supabase:", error);
-    } else {
-      console.log("Gift saved to Supabase");
-    }
-    setAmount("");
-    setMessage("");
-  };
+      if (error) console.error("Error saving to Supabase:", error);
+      else console.log("Gift saved!");
 
-  const handleTransactionError = (error: TransactionError) => {
-    console.error("Transaction failed:", error);
-  };
+      setMessage("");
+      setAmount("");
+      setSelectedUser(null);
+      setTxHash(null);
+    };
+
+    saveToSupabase();
+  }, [isSuccess]);
 
   return (
     <div className="flex-1 p-4 bg-app-background space-y-4">
-      <h1 className="text-xl font-semibold">
-        🫶 Let 'em know they are special! 🫶
-      </h1>
+      <h1 className="text-xl font-semibold">🫶 Let &lsquo;em know they are special! 🫶</h1>
       <p className="text-lg font-semibold">
-        Send your friends, fam and loved ones an appreciation token.
+        Send your friends, fam and loved ones a token of appreciation in ETH.
       </p>
 
       {selectedUser ? (
-        <UserPreview
-          user={selectedUser}
-          onClear={() => setSelectedUser(null)}
-        />
+        <UserPreview user={selectedUser} onClear={() => setSelectedUser(null)} />
       ) : (
         <UserSearch onSelectUser={(user) => setSelectedUser(user)} />
       )}
@@ -138,42 +107,18 @@ function MainHeader({
 
       <div className="flex flex-col items-center">
         {address && selectedUser && amount ? (
-          <Transaction
-            calls={createTransactionCalls}
-            onSuccess={handleTransactionSuccess}
-            onError={handleTransactionError}
+          <button
+            onClick={handleSend}
+            disabled={isPending}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
           >
-            <TransactionButton
-              className="text-white text-md"
-              text={`Send ${amount} ETH to ${selectedUser.username}`}
-            />
-            <TransactionStatus>
-              <TransactionStatusAction />
-              <TransactionStatusLabel />
-            </TransactionStatus>
-            <TransactionToast className="mb-4">
-              <TransactionToastIcon />
-              <TransactionToastLabel />
-              <TransactionToastAction />
-            </TransactionToast>
-          </Transaction>
+            {isPending ? "Sending..." : `Send ${amount} ETH to ${selectedUser.username}`}
+          </button>
         ) : (
-          <div className="text-center">
-            {!address && (
-              <p className="text-black-400 text-sm mb-2">
-                ⚠️ Connect your wallet to send a transaction
-              </p>
-            )}
-            {address && !selectedUser && (
-              <p className="text-black-400 text-sm mb-2">
-                ⚠️ Select a user to send to
-              </p>
-            )}
-            {address && selectedUser && !amount && (
-              <p className="text-black-400 text-sm mb-2">
-                ⚠️ Enter an amount to send
-              </p>
-            )}
+            <div className="text-center text-black-400 text-sm mb-2">
+              {!address && "⚠️ Connect your wallet to send a transaction"}
+              {address && !selectedUser && "⚠️ Select a user to send to"}
+              {address && selectedUser && !amount && "⚠️ Enter an amount to send"}
           </div>
         )}
       </div>

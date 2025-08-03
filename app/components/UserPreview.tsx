@@ -1,5 +1,6 @@
 import React from "react";
 import { X } from "lucide-react";
+import Image from "next/image";
 
 type User = {
   fid: number;
@@ -21,7 +22,7 @@ const UserPreview = ({
 }) => (
   <div className="relative flex items-start justify-between gap-4 rounded-xl bg-white p-4 shadow-sm border border-gray-200">
     <div className="flex justify-center items-center gap-4 text-center">
-      <img
+      <Image
         src={user.pfp_url}
         alt="User avatar"
         className="w-12 h-12 rounded-full object-cover ring-1 ring-gray-300"

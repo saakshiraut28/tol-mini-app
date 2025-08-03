@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase-client";
 
 export default function Receive({ fid }: { fid: number }) {
+  // ts-ignore
   const [received, setReceived] = useState<any[]>([]);
 
   useEffect(() => {

@@ -41,11 +41,7 @@ export default function HomePage() {
       </nav>
 
       {isAuthenticated && activeTab === "main" ? (
-        <MainHeader
-          setActiveTab={setActiveTab}
-          user={user}
-          signOut={() => {}}
-        />
+        <MainHeader user={user} />
       ) : activeTab === "profile" ? (
         <Profile user={user} />
       ) : (

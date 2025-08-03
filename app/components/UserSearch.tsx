@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
 
 type User = {
   fid: number;
@@ -87,7 +87,7 @@ const UserSearch = ({
               className="cursor-pointer p-2 border rounded bg-white hover:bg-gray-200"
             >
               <div className="flex items-center space-x-2">
-                <img
+                <Image
                   src={user.pfp_url}
                   alt="pfp"
                   className="w-8 h-8 rounded-full"
